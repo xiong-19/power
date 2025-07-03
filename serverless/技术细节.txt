@@ -1,0 +1,28 @@
+数据结构创建了，进程死亡但是不销毁，而是处于低资源占用状态。
+利用bpf直接在内核做C/R的re-do操作
+
+
+Catalyzer:
+	1. 执行的sandbox包含：容器，虚拟机。
+	2. 每个服务器存在一个网关程序作为守护进程，接收调用请求，并启用一个sandbox（配置文件与运行时）。
+	3. 基于gVisor虚拟机完成快速启动。
+	4. 展示了由gVisor启动至，java虚拟机启动的整个流程开销分布
+
+	5. 认为cache（zygote预热的python解释器-加载必要库，SAND相同函数的实例共享sandbox）的方式：1.服务器运行许多的服务，cache将带来巨大开销；2.CACHE的形式不能较低尾效应。
+	6.SOCK定制容器减小启动开销；轻量化虚拟机
+	7.轻量化虚拟机不能解决JVM或者python解释器这类程序
+	8.图（多个虚拟机多个程序中，sandbox与其他的占用时间对比）
+	9. Replayable单仅仅支持容器系统（同时其发现C/R将初始开销转变为restore开销，而restore开销也大）
+	10. 提出Init-less: 先将生成一个函数镜像，此后重用这个保存的镜像，去增加函数启动。
+	11. C/R的re-do操作如重做open()会带来性能开销尤其是sandbox中
+
+	12.基于gVisor提供的checkpoint与restore，在gVisor中添加了一个系统调用（trap到函数入口点）
+	13.系统调用在函数入口点调用，阻塞直到检测点操作开始
+	14. 提出的catalyzer, 1. 直接加载函数镜像产生新sandbox2.加载部分镜像，然后share运行中的sandbox3.直接通过提出的sfork复制sandbox模板
+
+	15. restore开销：1.系统状态的重新分析加载2.重做操作恢复系统状态
+	
+	16.overlay memory:在sandbox之间共享同一个应用（func-image）。每一个sandbox有两个EPT，一个私有一个共享（只读），对于新的sandbox直接使用共享的EPT，发生COW便会产生私有EPT
+	17.separated state recovery:系统状态（所有客户机的内部状态，线程列表，时钟等）的恢复对于高级语言的sandbox(gVisor)是困难的。offline：将部分反序列化元数据保存至func-image。恢复：1.从func-image中加载这些状态。2.并行的恢复系统状态。
+	18. on-demand I/O reconnection:在恢复路径上异步完成I/O连接（如文件的打开）。文件描述符传递给函数但是被标记上未打开。
+	19. zygote:sandbox构建。其提出一个base configuration，base roofs来缓存功能相匹配的zygote。

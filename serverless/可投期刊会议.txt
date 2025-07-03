@@ -1,0 +1,19 @@
+=========================会议===========================
+名称		等级	相关度	截止时间	接收时间	接收情况					
+APSEC 		ccf-c 	略微相关	7.6	9.13	43/？
+PDCAT 	被邀请至特刊发表	相关 	8.1 	9.15	46/114	Tsinghua Science and Technology/Human-centric Computing and Information Sciences/ 
+ASP-DAC 		ccf-c 	较相关 	7.4   	9.2
+HiPC		ccf-c    高性能计算	6.18	9.12	24.83%
+NPC		ccf-c	不太相关	7.1	10.1
+
+EuroSys		ccf-a	相关	9.18	1.30
+其他：FAST, EuroSys, ASPLOS
+
+
+==========================期刊===========================
+
+Computer Languages, Systems and Structures	ccf-c	相对相关	3个月	
+Computer Journal				ccf-b	相关	审核3个月以上
+Journal of Computer Science and Technology	ccf-b	相关	审核时间长
+
+
