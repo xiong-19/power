@@ -1,5 +1,6 @@
 数据结构创建了，进程死亡但是不销毁，而是处于低资源占用状态。
 利用bpf直接在内核做C/R的re-do操作
+异步打开，先返回一个特殊的文件打开符号，当使用这个文件符号的时候异步检测，若是没完成则等待完成。
 
 
 Catalyzer:
@@ -23,6 +24,22 @@ Catalyzer:
 	15. restore开销：1.系统状态的重新分析加载2.重做操作恢复系统状态
 	
 	16.overlay memory:在sandbox之间共享同一个应用（func-image）。每一个sandbox有两个EPT，一个私有一个共享（只读），对于新的sandbox直接使用共享的EPT，发生COW便会产生私有EPT
-	17.separated state recovery:系统状态（所有客户机的内部状态，线程列表，时钟等）的恢复对于高级语言的sandbox(gVisor)是困难的。offline：将部分反序列化元数据保存至func-image。恢复：1.从func-image中加载这些状态。2.并行的恢复系统状态。
-	18. on-demand I/O reconnection:在恢复路径上异步完成I/O连接（如文件的打开）。文件描述符传递给函数但是被标记上未打开。
-	19. zygote:sandbox构建。其提出一个base configuration，base roofs来缓存功能相匹配的zygote。
+	17.separated state recovery:系统状态（所有客户机的内部状态，线程列表，时钟等）的恢复对于高级语言的sandbox(gVisor)是困难的。offline：将部分反序列化元数据保存至func-image（移动到了同一个连续内存，所以可以直接mmap完成，而不是一个接一个，使用了一个表维持映射）。恢复：1.从func-image中加载这些状态。2.并行的恢复系统状态。
+	18. on-demand I/O reconnection:在恢复路径上异步完成I/O连接（如文件的打开）。文件描述符传递给函数但是被标记上未打开。I/O cache由catalyzer指导进行重新连接
+	19. zygote:sandbox构建。通过解析configuration，挂载roofs来缓存一个zygote。当函数触发时，通过加载特定的库与配置在zygote形成一个沙盒（什么鬼意思）
+	20. sfork：生成一个干净的模板沙盒（位于函数的入口），然后直接使用自己的sfork
+	
+	实现：用户告诉函数入口，然后将此处转换为系统调用，运行到此处保存内存数据，系统元数据，I/O信息等到func-image	。
+	
+
+	FaaSnap:
+	1. concurrent paging: 相比较REAP预取所有页面，当收到一个请求后，启动一个线程（代替firecraker VMM）去预取工作集页面。
+	2. work set group：认为按照第一次访问得页面顺序不好，将工作集按照访问顺序分为多个组
+	3. host page recording: （相比较于以前扫面页表得标志位，与REAP使用得userfaultfd）不能标记到readahead的页面，而这些页面被工作集包含了是可以提升性能的。所以设计了一个minicore的系统调用，通过反复调用去记录每次新的加载页面。
+	4. per-region memory mapping:  firecracker的snapshot的设计是将整个客户机的内存到memory file中。对于匿名页来说一开始是全0，所以只maps非0的页面到memory file。通过修改firecraker VMM将所以零页映射匿名内存。以此减少磁盘读。
+	5. loading set：合并相邻的区域（被零页分割开），减少需要映射的区域数量，减小映射的次数。
+	6. 区域的偏移与区域大小在后台进程中缓存着。
+	
+
+	Vhive：
+
