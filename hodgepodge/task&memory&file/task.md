@@ -62,5 +62,9 @@ cgroup_init_early:
 						// init_task.cgroups = &init_css_set
 						// 初始化各个资源子系统
 
+setup_arch:
+	setup_initial_init_mm(_stext, _etext, _edata, _end); //将这几个值设置到init_task上
+
+
 ```
 
