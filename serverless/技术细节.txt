@@ -1,6 +1,7 @@
 数据结构创建了，进程死亡但是不销毁，而是处于低资源占用状态。
 利用bpf直接在内核做C/R的re-do操作
 异步打开，先返回一个特殊的文件打开符号，当使用这个文件符号的时候异步检测，若是没完成则等待完成。
+将内存管理中冷热页面的设计运用于工作集。
 
 
 Catalyzer:
@@ -42,4 +43,26 @@ Catalyzer:
 	
 
 	Vhive：
+	1. firecracker提出了开源的snapshoting机制，其与Catalyzer的机制相同。
+	2. firecraker加载VM：1.加载VMM的状态，模拟设备，然后映射客户机内存以lazy的方式。
+	Vhive的架构设计：
+		1. 对于为了部署func，可以提供OCI镜像。由http或者gPRC执行一个invocation
+		* knative部署一个autoscaler监控每个函数的激发流量，决定缩放函数实例的数量	
+		2. 通过暴露http提供func invocation；work执行func code，cluster manager通过worker去管理函数实例
 
+							       --->存在一个激活实例，则直接路由至此实例	
+		fun invocation --(HTTP or RPC) --> 前端服务器（Istio）--/	
+							      --(无实例)--> cluster manager(autoscaler)
+									|
+                函数在mivroVM中执行与work host隔离<-----   创建一个函数实例 <-- worker < -------|
+  （一次处理一个invocation,一个函数在一个MicroVM）        (QP, MicroVM)QP提供一个队列，并报告队列深度给autoscaler
+
+		vHive-CRI整合了两个容器分支：标准containerd与Firecraker部署MicroVM
+		vHive-CRI接收来自Kubernets的CRI请求请求，做出一个合适的合适的请求到相关的containerd服务
+		load banlancer(Istio)接收到一个func invocation，与函数实例建立连接。load banlancer将response返回client
+
+	REAP：	reap独立于serverless infrastructure。每个函数都有一个监控实例。
+		read phase：
+			当加载snapshot时，hypervisor映射guest memory file作为一个匿名空间区域（开启user-fault），并将文件描述符传递给monitor线程。monitor完成工作集的记录。
+		prefetch phase: 后续调用都从工作集中，通过一次系统调用完成读取。
+	
