@@ -1,0 +1,60 @@
+1. run_warm
+	1.1 设置函数
+	1.2 设置并行的多个虚拟机
+	1.3 顺序激发虚拟机进行函数执行(mincore=-1, enable_reap=false, vm_id) 
+	1.4 在线程池中并发执行：
+		1.4.1 函数执行（mincore=-1, reap=false, vm_id) //以下m=mincore, r=enable_reap;
+				vm_id复用存在的虚拟机
+		1.4.2 kill虚拟机
+
+2. run_snap:
+	2.1 设置网络
+	2.2 设置函数
+	2.3 多个预步骤
+		vanilla:
+			1. 启动虚拟机
+			2. 执行函数(m=-1, r=false)
+			3. snapshot(type='full', snappath, mem_file_path),
+				生成ssId, 请求pause, create, resumed, 0区处理，与区域合并
+			4. kill虚拟机
+			5. 依据par_snap， 觉得是否复制多个snapshot
+			6. 压缩snapshot, 依据设置决定是否预取或者删除缓存(此处删除)
+
+		mincore:
+			1. 启动虚拟机
+			2. snapshot
+			3. kill
+			4. 删除缓存
+			5. 执行函数(m=100 or -1, r=false, use_mem_file, ssid)
+				ssid: shapshot start;
+				先加载snapshot，从vmmpool中获取一个vm；若vmid==0,则启动一个firecracker，创建vm一个结构体：vmm
+				发起一个load与resume的请求
+
+			6. 再次snapshot，kill，并且复制minicorecurrentlayer的内容，层记录处理
+			7. 清除snapshot缓存与ws缓存
+			
+		reap:
+			1. 启动虚拟机， 执行(vm_id, m=-1, r=f)
+			2. snapshot, kill, 清空snapshot缓存
+			3. 执行(ssid, m=-1, r=true, ws_file_irect_io)
+				执行reap注册，并且激活reap，加载snapshot(reapid)
+				增加了允许用户空间页错误的标记
+			4. kill, 清空ssid, reap的缓存
+
+		emumincore:
+			1. 启动虚拟机, 执行(vmid, m=-1, r=f)
+			2. snapshot, kill
+			3. snapshot缓存清除
+			4. 执行(ssid, m=-1, r=true)
+			5. kill 
+			6. 清空minicore, reap, snap的缓存
+		
+	
+	2.4 线程池并发执行：
+		2.4.1 
+			vanilla: 执行(r=f, m=-1, ssid)
+			mincore: 执行(r=f, m=-1, load_mincore=[...], ssid)
+			reap: 执行(r=t, m=-1, ssid)	
+		2.4.2 函数执行
+		2.4.3 kill虚拟机
+		
