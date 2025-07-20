@@ -1,0 +1,45 @@
+main:
+	1. 解析参数
+	2. 创建log文件
+	3. 加载configs/setup中的几个.json文件
+	*.
+
+* 执行对应脚本
+
+setup_node:
+	1. 对于ubuntu， 关闭自动更新
+	2. 下载对应包，设置etc/security下的文件,设置ipv4， 最大pid值与最大线程数
+	3. 关闭交换空间，修改/etc/fstab
+	4. 安装firecraker docker: 将几个可执行文件复制到/usr/local/bin下；复制文件系统，内核镜像到系统目录，复制配置文件
+	5. stock配置：安装各种包，下载protoc，containerd,runc,runsc, Kubernetes, 		native cli(可见脚本install_stock.sh
+	6. 设置IP地址：设置系统参数/etc/sysctl.conf, etc/sysctl.d
+	7. 执行脚本create_devmapper.sh: 设在data与metadata文件大小，并以此创建了一虚		拟块设备
+	8. 设置stargz: 配置文件address相关复制，复制两个可执行文件至系统目录
+	9. 下载yq
+
+执行containerd
+执行firecraker
+
+执行vHive
+	1. 创建log文件;中断处理函数，清空虚拟机等;时钟定时打印各信息
+	2. 设置各参数
+	3. 创建vmpool,设置其networkmanager; 主要是设置网络，没有则获取默认接口，获取一个网络命名空间，
+	   并发(添加了锁操作)设置pool_size个netCfg到NetworkManager.networkPoll中,区别是id不同,设置每一个config,其中包含
+	   各种网络设置
+	4. 设置函数池，主要是创建了snapshotmanager变量与一些文件设置，还设置了一个时钟打印函数池的信息funcpool
+	5. 创建了有一个firecakr使用的k8s的client， 一个service等等内容
+
+create_one_node_cluster:
+	1. 找到第一个ip为10开始的ipi地址
+	2. 或者找到hostname的ip地址，想/etc/default/kubelet中写入container-runtime-endpoint=unix://
+	3. systemctl daemon-reload
+	4. 执行kubeadm init --cri-socket unix://xxxx --pod-network-cidr
+	5. 设置主节点：下载Calio, 配置metalLB, 下载istio, 改变knative的queue-proxy镜像为firecracker,下载knative的服务组件kubectl apply -f xxx.yaml, kubectl -n knative-serving
+	6. 安装本地cluster: kubectl create -f xx && kubectl apply
+	7. 设置DNS, kubectl apply -f
+	8. 设置pods， kubectl apply -f xxx.yaml， kubectl -filename
+	9. 命名空间等设置
+	10. 允许pods再master上被调度
+
+
+	
