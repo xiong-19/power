@@ -1,12 +1,64 @@
-1. 无服务器部署方案（网上有没有）
-2. 那两个部署方案，不管论文技巧，只管各层级的调用栈
-3. kubernets容器的部署方案。
+1. 那两个部署方案，不管论文技巧，只管各层级的调用栈
+
+（1）两套方案的流程
+（2）具体怎么改的是的，自己的技巧可以生效
 
 
-
-重要关注点：无服务器怎么部署成功的
-难点：无多设备部署这样一个环境。可借助学校lth的设备模拟测试一下。
+实验：无多设备部署这样一个环境。可借助学校lth的设备模拟测试一下。
 
 疑问：构建docker镜像产生了一个什么文件在什么位置
+
+待完成：该跑的实验跑一跑
+	1. 容器的流程细节，是否可以通过接口完成，
+	2. rpc的实现代码
+	3.swapper的实现代码； proto的实现方式
+	3.两个项目，尽量跑通调试关键位置打印信息
+
+faasnap：
+	1. 构建了多个网络对
+	* 整个交流过为测试程序通过gprc请求，到faasnap监控程序，监控程序监控所有请求
+	2. 启动虚拟机，虚拟机启动时会监控请求
+	3. 在物理机发起请求，虚拟机监控到请求，开始运行相关代码
+
+	(*) 预热时（运行一个go线程），检测对应memfile的内存区域，每映射4k到内存便检测一次，记录每个页在检测的第几次出现。
+
+
+vhive
+kubelet设置：
+    (1)/etc/default/kubelet添加
+    KUBELET_EXTRA_ARGS="--v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix://%s --node-ip %s
+--container-runtine-endpoint 
+    (2) 初始化集群
+    kubeadm init --ignore-preflight-errors=all --cri-socket unix://xxx --pod-network-cidr=xxx --kubernets-version xx
+    (3) 删除所有节点上控制平面节点（control plane）默认添加的 taint，从而允许普通 pod 被调度到控制平面节点上
+    kubectl taint nodes --all node-role.kubenets.io/control-plane-
+    (4) 部署calico
+    kubectl apply -f  xx.yaml
+    (5) 等待其他节点
+    kubectl wait --for xxxx
+    (6) 配置metalLB裸金属环境的负载均衡
+
+    对于所有的VM创建启动等都是通过firecraker-containerd/firecraker-control/client得到的。通构建请求，发送到firecraker-client
+    最终都在ctriface/iface.go中调用
+    而gvisor直接在/cri/gvisor/文件中便完成调用
+    
+ 
+
+执行逻辑：
+	直接调用：
+		构建了两个grpc服务，orchserve与fwdserve。这两个服务通过tcp连接，端口号分别是3333，3334。对于orchserve提供start, stopsingle, stop的服务。对于fwd，提供直接运行一个hello镜像的服务。
+
+	CRI设置：
+		firecraker与gvisor都创建了一个grpc server用于监听来自与k8s的容器服务请求（runtime与image），端口为vhive-cri.sock; 同时创建了一个criservice -- 其变量包含一个firecrakerserice（包含一个client：runtime）,两个client(runtime， image) 。client用于请求containerd.sock。
+	
+	firecarker/service.go  与 gvisor/service.go 有容器管理中修改的函数。
+	未修改的函数位于cri/proxy.go, 直接转发至containerd。
+
+	
+	对于firecracker有一个coordinator: 包含一个funcInstance哈希表, orchestrator, snapshotmanager(地址/fccd/test/snapshots)； snapshotmanager包含一个snaoshots的snapshot的哈希表
+	
+容器运行大模型？？
+
+
 
 

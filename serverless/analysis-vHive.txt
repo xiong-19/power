@@ -11,9 +11,9 @@ setup_node:
 	2. 下载对应包，设置etc/security下的文件,设置ipv4， 最大pid值与最大线程数
 	3. 关闭交换空间，修改/etc/fstab
 	4. 安装firecraker docker: 将几个可执行文件复制到/usr/local/bin下；复制文件系统，内核镜像到系统目录，复制配置文件
-	5. stock配置：安装各种包，下载protoc，containerd,runc,runsc, Kubernetes, 		native cli(可见脚本install_stock.sh
+	5. stock配置：安装各种包，下载protoc，containerd,runc,runsc, Kubernetes, native cli(可见脚本install_stock.sh
 	6. 设置IP地址：设置系统参数/etc/sysctl.conf, etc/sysctl.d
-	7. 执行脚本create_devmapper.sh: 设在data与metadata文件大小，并以此创建了一虚		拟块设备
+	7. 执行脚本create_devmapper.sh: 设在data与metadata文件大小，并以此创建了一虚拟块设备
 	8. 设置stargz: 配置文件address相关复制，复制两个可执行文件至系统目录
 	9. 下载yq
 
