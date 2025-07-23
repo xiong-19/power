@@ -595,8 +595,119 @@ slab对象释放: kmem_cache_free
 | ![img](../markdown_fig/1771657-20191229212124427-2121409429.png) |
 | ------------------------------------------------------------ |
 | ![img](../markdown_fig/1771657-20191229212250548-456046597.png) |
+| ![img](markdown_fig/1771657-20191229212316573-2101422810.png) |
+
+> 具体的触发处理：[【原创】（十四）Linux内存管理之page fault处理 - LoyenWang - 博客园](https://www.cnblogs.com/LoyenWang/p/12116570.html)
+>
+> https://cloud.tencent.com/developer/article/2373334 mmap图详细
+
+````c
+pte不存在：
+    do_anonymous_page:(若为匿名页)
+        触发：1. 只分配地址空间，初次访问触发；2.用户栈扩大处理
+        处理: 1. 对于只读操作，映射到0页；2.对于其他的在高端内存分配一个物理页，并生成对应页表项填入，建立物理页与虚拟页的反向映射，并将物理页添加至LRU链表
+
+    do_fault:(若不为匿名页)
+        (1)读文件错误：
+                do_read_fault: 1.故障附近多映射一些页do_fault_around；2.文件中读取页；3.设置页表
+                    do_fault_around:先计算出附近的起始位置与结束位置；然后调用文件自己的 (.map_pages)将附近文件页预取进page cache；然后调用 __do_fault映射本页:先从page cache中读取，若无则从磁盘中读取，并预取若干页到page cache
+
+    __do_fault: [1]文件页在内存page cache，则调用do_async_mmap_readahead异步预读；若不在则do_sync_mmap_readahead同步读取，然后获取页；[2]同步读，先分配一个物理页，将分配页添加至page cache，然后通过address_space_operation->readpage激活块设备读取。[3]finish_fault:将文件页映射到pte中，将创建的物理映射到页表中          
+
+        (2)写私有文件：
+               do_cow_falut: 1.分配一个页面cow_page；2._do_fault从文件中读取页；3.将fault_page页面拷到新页面，设置页表项
+               注意：由于cow_page脱离了page cache，所以修改不会写回磁盘中。    
+
+        (3)写共享页：
+               do_shared_fault: 1._do_fault文件中读取页；2.设置脏页标记 
+
+               注意：与do_cow_fault的区别是对文件的修改反映在page cache上，后续写回磁盘
 
 
+pte存在，但是页不在内存中：
+        do_swap_page:
+			swap交换区分为swap文件与swap分区；而内核的多个交换区被记录在swap_info[]中，swap_entry_t实现确认swap_info的idx，然后确认在该交换区的那个slot中即offset（一个交换区有多个slot，slot大小为4k）
+			swap_entry_t: 0位是否在内存; 7:2 swp_indx; 57:8: swp_offset;
+			swap_info_struct有对应磁盘设备的块设备指针。
+        核心函数：swap_readpage:[1]找到交换文件的file,读取匿名页到page中，注意不会将page放入page cache中，因为这不是一个正常的文件；[2]对应wap分区，则直接从磁盘块中读取。[3]然后建立映射，加入lru
+            
+            swap cache：可能出现多个进程指向的页面被换出，然后一个进程进行页面换回后其他进程的pte不能感知这个行为的情况。
+            【*】所以上面在换入的时候会检测是swap cache中是否已经有了。
+       
+pte在内存中，但是标记未_PAGE_PROTNONE(无读写，可执行权限，那么便会将该page迁移到进程运行的numa节点上)
+    	do_numa_page:
+
+pte存在，vma可写，但是pte不可写： 发生cow(父子进程间；mmap映射后，do_read_fault加载到page cache但是pte为只读)
+		do_wp_page:->wp_page_copy:[1]如果是zero page，则分配物理内存并清空；否则分配一个物理页，并拷贝数据到这个页；[2]页加入LRU中；[*]如为匿名页且引用技术为1，pte修改为可写即可；若vma为共享可写，则也复用当前的页面即可				
+	
+````
+
+> 私有文件映射的特点未读共享，所以任意进程发生对私有文件映射的写操作时，都会发生COW。
+>
+> 当多个进程对同一文件就行私有映射后，他们的file->inode会指向同一个**inode**，inode的`struct address_space * i_mapping`指向==page cache==
+
+
+
+##### RMAP
+
+> 物理地址反向映射到虚拟地址。
+>
+> 当某个物理地址需要回收（如`kswapd`）或者迁移时，反向映射找到VMA，然后从VMA使用的用户页表中取消映射。
+
+```c
+对于匿名页来说：
+	page->mapping = anon_vma + 0x01;  // mapping的最低位为1，则mapping指向anon_vma;当最低位为0时，mapping指向struct address_space; 而index表示内存页在磁盘文件的offset
+	page->index = linear_page_index(vma, address); 
+	// value = (address-vma->start)>>PAGE_SHIFT + vma->vm_pgoff;
+```
+
+```c
+struct vm_area_struct {
+	struct list_head anon_vma_chain; 
+	struct anon_vma *anon_vma;	
+}
+struct anon_vma {
+	struct anon_vma *root;	
+	struct anon_vma *parent;	
+	struct rb_root_cached rb_root;
+};
+struct anon_vma_chain {
+	struct vm_area_struct *vma;
+	struct anon_vma *anon_vma;
+	struct list_head same_vma;  
+	struct rb_node rb;			
+};
+```
+
++ `AVC`通过`same_vma`挂入`VMA`的`anon_vma_chain`
++ `AVC`通过`rb`挂入`AV`的`rb_root`
+
+为什么AV不直接与AVM直接连接？
+
+> 因为每个匿名物理页只能指向一个anon_vma，但是一个匿名物理页可能被多个进程连接。所以这种1对1的连接时不行的，需要一个1对多的连接方式。
+
+那么为什么不直接把VMA作为一个节点挂入anon_vma的红黑树？
+
+> 当进程死亡时，映射物理页便不在被映射，但是此时需要将anon_vma中的反向映射VMA的记录删去，所以需要VMA找到anon_vma的途径，但是VMA中的可能映射有多个物理匿名页，这些物理匿名页指向同一个anon_vma；
+>
+> 需要通过vma->anon_vma_chain才可以得到进程包含的所有anon_vma, 并从anon_vma的红黑树中删去，表示该物理页不在映射VMA
+
+| ![图片](markdown_fig/640.webp)                               |
+| ------------------------------------------------------------ |
+| ![img](markdown_fig/1771657-20200108072245927-1661167663.png) |
+
+```c
+do_anonymous_page:
+	anon_vma_prepare(vma); // 若是当前的vma->anon_vma存在，则直接结束。
+	// 1.分配一个avc；2.在相邻的区域的VMA中查找一个anon_vma(或者直接分配一个VMA)；
+	// 3.vma->anon_vma=anon_vma; list_add(avc->same_vma, vma->anon_vma_chain);
+	//  anon_vma_interval_tree_insert(avc, &anon_vma->rb_root);
+	// avc->vma = vma; avc->anon_vma = anon_vma;
+
+	page =  alloc_zeroed_user_highpage_movable(vma, vmf->address); 	
+	page_add_new_anon_rmap(page, vma, vmf->address);
+
+```
 
 #### 问题
 

@@ -2,7 +2,7 @@
 
 POT：针对部分指令无法被多个进程共享； PLT: 延迟绑定减小开销
 
-![image-20250323182122346](/home/xiongwanfu/桌面/markdown_fig/image-20250323182122346.png)
+![image-20250323182122346](markdown_fig/image-20250323182122346.png)
 
 先读取前128字节，然后得到文件头，得到程序头，然后读入程序头，然后依据程序头中的信息取出动态连接器，读取动态连接器的文件头，更新mm，设置mmap的起点与方向，设置栈顶。
 
@@ -34,11 +34,11 @@ cgroup由bandwith的剩余时间决定是否被调度
 
 检测是否需要调度：超过理论运行时间；大于最小节点的虚拟时间； 虚拟时间大于理论运行时间。
 
-![81d77977f44e285e13ce67729d55f138](/home/xiongwanfu/桌面/markdown_fig/81d77977f44e285e13ce67729d55f138.png)
+![81d77977f44e285e13ce67729d55f138](markdown_fig/81d77977f44e285e13ce67729d55f138.png)
 
-![6336665b15681e9d9d722e83386b5fc9](/home/xiongwanfu/桌面/markdown_fig/6336665b15681e9d9d722e83386b5fc9.png)
+![6336665b15681e9d9d722e83386b5fc9](markdown_fig/6336665b15681e9d9d722e83386b5fc9.png)
 
-![image-20241224224147413](/home/xiongwanfu/桌面/markdown_fig/image-20241224224147413.png)
+![image-20241224224147413](markdown_fig/image-20241224224147413.png)
 
 
 
@@ -59,7 +59,7 @@ task_group为每一个进程创建一个se与cfs_rq;
 + tg->shares    -->由sched_group_set_share可以设置
 + cal_group_share: 涉及到load的值
 
-![image-20250320110110744](/home/xiongwanfu/桌面/markdown_fig/image-20250320110110744-17424397059031.png)
+![image-20250320110110744](markdown_fig/image-20250320110110744-17424397059031.png)
 
 + 需要注意的是reweight_entity中，se->load->weight被设置为了share的值
 
@@ -76,7 +76,7 @@ struct cfs_rq{
 }
 ```
 
-![img](/home/xiongwanfu/桌面/markdown_fig/1771657-20200310214212348-1048763810.png)
+![img](markdown_fig/1771657-20200310214212348-1048763810.png)
 
 ##### init_cfs_bandwidth
 
@@ -200,5 +200,5 @@ __update_load_avg_cfs_rq
 1.  计算与实体的计算相同, load_sum（load为权重值，runnable为挂载的实体数, running为当前cfs_rq是否被运行）
 ```
 
-![image-20250409144352642](/home/xiongwanfu/桌面/markdown_fig/image-20250409144352642.png)
+![image-20250409144352642](markdown_fig/image-20250409144352642.png)
 
